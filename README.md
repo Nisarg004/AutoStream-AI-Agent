@@ -35,6 +35,14 @@ python main.py
 
 ## Architecture
 
+### Why LangGraph & How State is Managed
+
+LangGraph was chosen over plain LangChain because the lead capture flow is inherently multi-step and stateful — a simple chain cannot pause mid-conversation, wait for user input, and resume from the exact same point. LangGraph models the agent as a directed graph where each node is a discrete processing step, and conditional edges route execution based on runtime state (e.g., detected intent, which lead field is still missing). This makes the control flow explicit, testable, and easy to extend.
+
+State is managed through a single `AgentState` TypedDict that flows through every node. Each node receives the full state and returns only the fields it modifies — LangGraph merges these partial updates back automatically. The graph itself is stateless per-invocation; the CLI loop owns a persistent `AgentState` dict and merges each graph result back into it, giving the agent memory across turns without requiring an external store. This design also makes WhatsApp integration straightforward: swapping the CLI loop for a webhook handler and keying state by phone number is all that changes.
+
+### File Map
+
 ```
 main.py                   CLI loop — persistent AgentState across turns
 agent/
