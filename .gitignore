@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+.faiss_index/
+*.egg-info/
+.venv/
+dist/
+build/
+pe.txt
+leads.csv
+.DS_Store
+.claude/

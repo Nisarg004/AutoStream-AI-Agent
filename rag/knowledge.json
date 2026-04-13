@@ -1,0 +1,32 @@
+{
+  "plans": [
+    {
+      "id": "basic",
+      "name": "Basic Plan",
+      "price": "$29/month",
+      "videos": "10 videos/month",
+      "resolution": "720p",
+      "features": ["10 videos per month", "720p resolution"]
+    },
+    {
+      "id": "pro",
+      "name": "Pro Plan",
+      "price": "$79/month",
+      "videos": "Unlimited videos",
+      "resolution": "4K",
+      "features": ["Unlimited videos", "4K resolution", "AI captions", "24/7 support"]
+    }
+  ],
+  "policies": [
+    {
+      "id": "refund",
+      "topic": "Refund Policy",
+      "content": "No refunds after 7 days of purchase."
+    },
+    {
+      "id": "support",
+      "topic": "Support",
+      "content": "24/7 support is available only for Pro plan subscribers. Basic plan users have access to standard support."
+    }
+  ]
+}
