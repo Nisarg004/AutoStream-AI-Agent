@@ -1,4 +1,6 @@
 import os
+import re
+
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -11,6 +13,10 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 _MODEL = "gpt-4o-mini"
+
+# Deliberately permissive: rejects obvious typos (missing @, missing TLD,
+# embedded spaces) without turning away unusual but valid addresses.
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$")
 
 
 # ---------------------------------------------------------------------------
@@ -95,9 +101,11 @@ def lead_collection_node(state: AgentState) -> dict:
     Manages the step-by-step lead capture dialogue.
     Reads the current step from state, stores the user's last answer,
     advances the step, and asks the next question.
+    An answer that fails validation re-asks the same question instead of
+    advancing, so the step and the fields collected so far are preserved.
     """
     step = state.get("lead_collection_step")
-    user_msg = state["user_message"]
+    user_msg = state["user_message"].strip()
     update: dict = {}
 
     if step is None:
@@ -116,6 +124,14 @@ def lead_collection_node(state: AgentState) -> dict:
         print(f"[LeadCollectionNode] Name collected: {user_msg}")
 
     elif step == "ask_email":
+        if not _EMAIL_RE.match(user_msg):
+            print("[LeadCollectionNode] Invalid email — re-asking")
+            return {
+                "response": (
+                    "That doesn't look like a valid email address. "
+                    "Could you double-check and send it again?"
+                )
+            }
         update["lead_email"] = user_msg
         update["lead_collection_step"] = "ask_platform"
         update["response"] = (
@@ -125,6 +141,14 @@ def lead_collection_node(state: AgentState) -> dict:
         print(f"[LeadCollectionNode] Email collected: {user_msg}")
 
     elif step == "ask_platform":
+        if not user_msg:
+            print("[LeadCollectionNode] Empty platform — re-asking")
+            return {
+                "response": (
+                    "I didn't catch that — which creator platform do you use? "
+                    "(e.g. YouTube, Instagram, TikTok, etc.)"
+                )
+            }
         update["lead_platform"] = user_msg
         update["lead_collection_step"] = "complete"
         print(f"[LeadCollectionNode] Platform collected: {user_msg}")

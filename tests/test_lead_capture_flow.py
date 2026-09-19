@@ -92,3 +92,83 @@ def test_second_flow_captures_new_lead_separately(captured):
         ("Alice", "alice@example.com", "YouTube"),
         ("Bob", "bob@example.com", "TikTok"),
     ]
+
+
+# ---------------------------------------------------------------------------
+# Input validation
+#
+# These call lead_collection_node directly: validation is pure state handling,
+# so no graph invocation or LLM stubbing is needed.
+# ---------------------------------------------------------------------------
+
+
+def _at_step(step: str, message: str) -> dict:
+    return _new_state() | {"lead_collection_step": step, "user_message": message}
+
+
+@pytest.mark.parametrize(
+    "email",
+    [
+        "alice@example.com",
+        "a.b+tag@sub.example.co.uk",
+        "  alice@example.com  ",
+    ],
+)
+def test_valid_email_advances_to_platform(email):
+    update = nodes.lead_collection_node(_at_step("ask_email", email))
+
+    assert update["lead_email"] == email.strip()
+    assert update["lead_collection_step"] == "ask_platform"
+
+
+@pytest.mark.parametrize(
+    "email",
+    [
+        "",
+        "   ",
+        "not-an-email",
+        "alice@",
+        "@example.com",
+        "alice@example",
+        "alice example.com",
+        "alice@exa mple.com",
+    ],
+)
+def test_invalid_email_reasks_without_advancing(email):
+    update = nodes.lead_collection_node(_at_step("ask_email", email))
+
+    assert "lead_email" not in update, "invalid email must not be stored"
+    assert "lead_collection_step" not in update, "step must not advance"
+    assert "email" in update["response"].lower()
+
+
+def test_valid_platform_completes_the_flow():
+    update = nodes.lead_collection_node(_at_step("ask_platform", " YouTube "))
+
+    assert update["lead_platform"] == "YouTube"
+    assert update["lead_collection_step"] == "complete"
+
+
+@pytest.mark.parametrize("platform", ["", "   "])
+def test_empty_platform_reasks_without_advancing(platform):
+    update = nodes.lead_collection_node(_at_step("ask_platform", platform))
+
+    assert "lead_platform" not in update, "empty platform must not be stored"
+    assert "lead_collection_step" not in update, "step must not advance"
+    assert "platform" in update["response"].lower()
+
+
+def test_flow_recovers_after_an_invalid_email(captured):
+    """A rejected email re-asks, and the corrected one carries the flow through."""
+    state = _new_state()
+    _turn(state, "I want to sign up for the Pro plan")
+    _turn(state, "Alice")
+    _turn(state, "alice-at-example.com")
+
+    assert state["lead_collection_step"] == "ask_email", "should still be asking for email"
+    assert captured == []
+
+    _turn(state, "alice@example.com")
+    _turn(state, "YouTube")
+
+    assert captured == [("Alice", "alice@example.com", "YouTube")]
