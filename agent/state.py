@@ -1,5 +1,4 @@
-from typing import Optional, Literal
-from typing_extensions import TypedDict
+from typing import Literal, Optional, TypedDict
 
 
 class AgentState(TypedDict):
