@@ -2,12 +2,9 @@
 
 These drive the real compiled LangGraph the same way main.run_chat does
 (persistent state dict, merged after every turn). The LLM intent classifier
-and the capture tool are stubbed, so no network access or API key is needed.
+and the capture tool are stubbed by the `captured` fixture in conftest.py,
+so no network access or API key is needed.
 """
-import os
-
-os.environ.setdefault("OPENAI_API_KEY", "test-key")  # client is built at import time
-
 import pytest
 
 import agent.nodes as nodes
@@ -26,17 +23,6 @@ def _new_state() -> dict:
         "lead_collection_step": None,
         "lead_captured": False,
     }
-
-
-@pytest.fixture
-def captured(monkeypatch):
-    """Stub the classifier and the tool; return the list of captured leads."""
-    calls: list[tuple[str, str, str]] = []
-    monkeypatch.setattr(nodes, "classify_intent", lambda msg: "high_intent")
-    monkeypatch.setattr(
-        nodes, "mock_lead_capture", lambda name, email, platform: calls.append((name, email, platform))
-    )
-    return calls
 
 
 def _turn(state: dict, message: str) -> None:
