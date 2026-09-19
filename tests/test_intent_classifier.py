@@ -38,7 +38,6 @@ def test_llm_failure_falls_back_to_keywords(monkeypatch):
         ("how much does it cost", "product_query"),
         ("what is your refund policy", "product_query"),
         ("hey there", "greeting"),
-        ("something unrelated entirely", "greeting"),
     ],
 )
 def test_keyword_fallback_labels(message, expected):
@@ -48,3 +47,35 @@ def test_keyword_fallback_labels(message, expected):
 def test_keyword_fallback_prefers_buying_intent():
     """Both keyword sets match here; buying intent must win."""
     assert ic._keyword_fallback("I want to buy it, what's the price?") == "high_intent"
+
+
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        # A plan name is a topic, not an intention.
+        ("how much is the pro plan?", "product_query"),
+        ("what does the basic plan include?", "product_query"),
+        # Buying language still wins, even phrased as a question.
+        ("can I purchase the basic plan?", "high_intent"),
+        # Commitment, payment and sign-up wording.
+        ("let's do it", "high_intent"),
+        ("take my money", "high_intent"),
+        ("where do I pay?", "high_intent"),
+        ("set me up", "high_intent"),
+        # Openers are matched explicitly now, not left to the default.
+        ("good morning", "greeting"),
+        ("thanks!", "greeting"),
+    ],
+)
+def test_keyword_fallback_rules(message, expected):
+    assert ic._keyword_fallback(message) == expected
+
+
+def test_unrecognised_message_defaults_to_product_query():
+    """The default used to be greeting, which silently swallowed real questions."""
+    assert ic._keyword_fallback("mmm, not sure what I need yet") == "product_query"
+
+
+def test_matching_respects_word_boundaries():
+    """'hi' must not fire inside 'this'; substring matching used to allow that."""
+    assert ic._keyword_fallback("what is this?") == "product_query"
