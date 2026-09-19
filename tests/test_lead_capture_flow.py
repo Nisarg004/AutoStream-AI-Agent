@@ -172,3 +172,37 @@ def test_flow_recovers_after_an_invalid_email(captured):
     _turn(state, "YouTube")
 
     assert captured == [("Alice", "alice@example.com", "YouTube")]
+
+
+def test_valid_name_advances_to_email():
+    update = nodes.lead_collection_node(_at_step("ask_name", " Alice "))
+
+    assert update["lead_name"] == "Alice"
+    assert update["lead_collection_step"] == "ask_email"
+
+
+@pytest.mark.parametrize("name", ["", "   "])
+def test_empty_name_reasks_without_advancing(name):
+    update = nodes.lead_collection_node(_at_step("ask_name", name))
+
+    assert "lead_name" not in update, "empty name must not be stored"
+    assert "lead_collection_step" not in update, "step must not advance"
+    assert "name" in update["response"].lower()
+
+
+@pytest.mark.parametrize("missing", ["lead_name", "lead_email", "lead_platform"])
+def test_tool_execution_guard_survives_a_none_field(missing, captured):
+    """A None field must take the reset path, not raise AttributeError."""
+    state = _new_state() | {
+        "lead_name": "Alice",
+        "lead_email": "alice@example.com",
+        "lead_platform": "YouTube",
+        "lead_collection_step": "complete",
+    }
+    state[missing] = None
+
+    update = nodes.tool_execution_node(state)
+
+    assert captured == [], "the tool must not fire with a missing field"
+    assert update["lead_captured"] is False
+    assert update["lead_collection_step"] is None

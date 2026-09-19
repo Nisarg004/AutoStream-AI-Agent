@@ -118,6 +118,11 @@ def lead_collection_node(state: AgentState) -> dict:
         print("[LeadCollectionNode] Starting lead flow — asking for name")
 
     elif step == "ask_name":
+        if not user_msg:
+            print("[LeadCollectionNode] Empty name — re-asking")
+            return {
+                "response": "I didn't catch that — could you share your full name?"
+            }
         update["lead_name"] = user_msg
         update["lead_collection_step"] = "ask_email"
         update["response"] = f"Thanks, {user_msg}! What's your email address?"
@@ -162,9 +167,11 @@ def lead_collection_node(state: AgentState) -> dict:
 
 def tool_execution_node(state: AgentState) -> dict:
     """Validates all lead fields then calls mock_lead_capture."""
-    name = state.get("lead_name", "").strip()
-    email = state.get("lead_email", "").strip()
-    platform = state.get("lead_platform", "").strip()
+    # `or ""` guards against a field that is present but None, which .get's
+    # default does not cover.
+    name = (state.get("lead_name") or "").strip()
+    email = (state.get("lead_email") or "").strip()
+    platform = (state.get("lead_platform") or "").strip()
 
     if not all([name, email, platform]):
         return {
