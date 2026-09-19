@@ -1,0 +1,86 @@
+{
+  "description": "30 held-out messages, 10 per label, written before any change to the keyword fallback and kept separate from eval/intents.json. No message here is a reword of one there; phrasings deliberately avoid the vocabulary the original set leans on (plan names, the words 'refund', 'price', 'sign up'), so a rule tuned to the original set does not automatically transfer.",
+  "labels": ["greeting", "product_query", "high_intent"],
+  "messages": [
+    { "message": "hey, anyone there?", "label": "greeting" },
+    { "message": "sup", "label": "greeting" },
+    { "message": "nice to meet you", "label": "greeting" },
+    {
+      "message": "are you a real person?",
+      "label": "greeting",
+      "note": "A question about the assistant rather than the product, so not product_query. Same call as 'who are you?' in the original set."
+    },
+    { "message": "lol that's funny", "label": "greeting" },
+    { "message": "no worries", "label": "greeting" },
+    {
+      "message": "just looking around for now",
+      "label": "greeting",
+      "note": "Explicitly declines to ask anything. Closest to casual conversation; a case could be made that it deserves a fourth label the agent does not have."
+    },
+    { "message": "have a good one", "label": "greeting" },
+    {
+      "message": "what can you help me with?",
+      "label": "greeting",
+      "note": "Asks about the assistant's scope, not about the product. Arguable: a reader who treats 'what can you do' as a feature question would label it product_query."
+    },
+    { "message": "cheers", "label": "greeting" },
+
+    {
+      "message": "does the cheaper tier do 1080p?",
+      "label": "product_query",
+      "note": "Names the plan by description rather than by name, and a resolution the knowledge base does not list."
+    },
+    { "message": "what happens if I cancel halfway through the month?", "label": "product_query" },
+    { "message": "are captions auto-generated or do I do them manually?", "label": "product_query" },
+    { "message": "is there a limit on video length?", "label": "product_query" },
+    {
+      "message": "do I get priority help if something breaks?",
+      "label": "product_query",
+      "note": "A support question that never uses the word 'support'."
+    },
+    {
+      "message": "can I upgrade later without losing my work?",
+      "label": "product_query",
+      "note": "'Upgrade' reads as transactional, but the message asks whether upgrading is possible rather than asking to upgrade. Contrast with 'I'd like to upgrade to the 4K one' below."
+    },
+    { "message": "which one has unlimited exports?", "label": "product_query" },
+    { "message": "what's the monthly cost for the better plan?", "label": "product_query" },
+    {
+      "message": "how long do I have to ask for my money back?",
+      "label": "product_query",
+      "note": "A refund question phrased without the word 'refund'."
+    },
+    { "message": "do you work with instagram reels?", "label": "product_query" },
+
+    {
+      "message": "ok I'm in",
+      "label": "high_intent",
+      "note": "Commitment idiom opening with a filler word that reads as a greeting."
+    },
+    { "message": "count me in", "label": "high_intent" },
+    { "message": "send me the checkout link", "label": "high_intent" },
+    { "message": "I'd like to go ahead with the better plan", "label": "high_intent" },
+    {
+      "message": "can we get this started today?",
+      "label": "high_intent",
+      "note": "Asks to begin. 'get this started' splits the usual 'get started' wording."
+    },
+    {
+      "message": "put me down for the unlimited one",
+      "label": "high_intent",
+      "note": "Commitment phrased around a feature name rather than a plan name."
+    },
+    { "message": "happy to go ahead", "label": "high_intent" },
+    {
+      "message": "how do I create an account?",
+      "label": "high_intent",
+      "note": "Question form, but the goal is to register. Defensible as product_query; labelled high_intent because starting the lead flow is the better failure mode."
+    },
+    {
+      "message": "I'd like to upgrade to the 4K one",
+      "label": "high_intent",
+      "note": "'Upgrade' used as an action with a target, unlike the product_query 'can I upgrade later' above."
+    },
+    { "message": "take my card details", "label": "high_intent" }
+  ]
+}

@@ -35,7 +35,10 @@ from utils.intent_classifier import _keyword_fallback
 load_dotenv()
 
 HERE = Path(__file__).resolve().parent
-DATASET = HERE / "intents.json"
+DATASETS = [
+    ("Original set", HERE / "intents.json"),
+    ("Held-out set", HERE / "intents_heldout.json"),
+]
 RESULTS = HERE / "RESULTS.md"
 CLASSIFIER_SRC = ROOT / "utils" / "intent_classifier.py"
 
@@ -131,7 +134,7 @@ def _pct(hits: int, total: int) -> str:
 
 
 def render(name: str, stats: dict) -> str:
-    out = [f"### {name}", ""]
+    out = [f"#### {name}", ""]
     out.append(f"- Overall accuracy: **{_pct(stats['correct'], stats['scored'])}**")
     out.append(f"- Errors (API call raised): **{len(stats['errors'])}**")
     out.append("")
@@ -175,46 +178,62 @@ def main() -> None:
     if not os.getenv("OPENAI_API_KEY"):
         sys.exit("OPENAI_API_KEY is not set. eval/ needs a real key; the test suite does not.")
 
-    data = json.loads(DATASET.read_text())
-    items = data["messages"]
     in_sync, missing = _prompt_sync_status()
-
-    print(f"Dataset: {len(items)} messages "
-          f"({', '.join(f'{n} {l}' for l, n in Counter(i['label'] for i in items).items())})")
-    print(f"Model:   {MODEL}")
+    print(f"Model: {MODEL}")
     if not in_sync:
         print(f"WARNING: the copied prompt has drifted from {CLASSIFIER_SRC.name}: {missing}")
-    print("Running LLM classifier (one API call per message)...")
-    llm = summarise(evaluate(classify_llm, items))
-    print("Running keyword fallback...")
-    keyword = summarise(evaluate(_keyword_fallback, items))
 
-    now = datetime.now()
+    sections, headline = [], []
+    for title, path in DATASETS:
+        data = json.loads(path.read_text())
+        items = data["messages"]
+        spread = ", ".join(f"{n} {l}" for l, n in Counter(i["label"] for i in items).items())
+        print(f"\n{title}: {len(items)} messages ({spread})")
+
+        print("  LLM (one API call per message)...")
+        llm = summarise(evaluate(classify_llm, items))
+        print("  keyword fallback...")
+        keyword = summarise(evaluate(_keyword_fallback, items))
+
+        sections.append("\n".join([
+            f"## {title} — `eval/{path.name}` ({len(items)} messages, {spread})",
+            "",
+            data["description"],
+            "",
+            render(f"LLM classifier (`{MODEL}`)", llm),
+            render("Keyword fallback (`_keyword_fallback`)", keyword),
+        ]))
+        headline.append(
+            f"| {title} | {_pct(llm['correct'], llm['scored'])} | "
+            f"{_pct(keyword['correct'], keyword['scored'])} | {len(llm['errors'])} |"
+        )
+
     body = "\n".join([
         "# Intent classification results",
         "",
-        f"- Run: {now:%Y-%m-%d %H:%M} local time",
+        f"- Run: {datetime.now():%Y-%m-%d %H:%M} local time",
         f"- Model: `{MODEL}` (temperature 0, max_tokens 10)",
-        f"- Dataset: `eval/intents.json`, {len(items)} hand-written messages, 12 per label",
-        f"- Prompt copy in sync with `utils/intent_classifier.py`: {'yes' if in_sync else 'NO — ' + str(missing)}",
+        f"- Keyword fallback: **before** — the original rules, not yet changed",
+        f"- Prompt copy in sync with `utils/intent_classifier.py`: "
+        f"{'yes' if in_sync else 'NO — ' + str(missing)}",
         "",
-        "36 hand-written messages is a sanity check, not a benchmark. The numbers",
-        "below say whether the classifier behaves sensibly on realistic phrasing;",
-        "they do not generalise to production traffic.",
+        "| Dataset | LLM | Keyword fallback (before) | API errors |",
+        "|---|---|---|---|",
+        *headline,
+        "",
+        "Both sets are hand-written and small, so these are sanity checks rather",
+        "than benchmarks. The original set has already been read and reasoned",
+        "about; the held-out set was written before any change to the fallback and",
+        "is the fairer of the two.",
         "",
         "The LLM path calls the API directly rather than through `classify_intent`,",
         "which catches every exception and falls back to keywords — that would hide",
         "an outage behind a keyword-level score.",
         "",
-        render(f"LLM classifier (`{MODEL}`)", llm),
-        render("Keyword fallback (`_keyword_fallback`)", keyword),
+        *sections,
     ])
     RESULTS.write_text(body + "\n")
-
-    print()
-    print(f"LLM     : {_pct(llm['correct'], llm['scored'])}  errors={len(llm['errors'])}")
-    print(f"Keyword : {_pct(keyword['correct'], keyword['scored'])}  errors={len(keyword['errors'])}")
-    print(f"Written to {RESULTS.relative_to(ROOT)}")
+    print(f"\nWritten to {RESULTS.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
