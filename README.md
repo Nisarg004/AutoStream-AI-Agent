@@ -108,6 +108,21 @@ The graph is stateless per-invocation. The CLI loop merges each result back into
 | `lead_collection_node` | Steps through name → email → platform collection. Each turn validates one answer and stores it, or re-asks on invalid input. |
 | `tool_execution_node` | Re-checks all three fields, calls `mock_lead_capture()`, appends lead to `leads.csv`, then resets the flow. |
 
+### When the API is unreachable
+
+Every LLM call has a fallback, so a turn still produces a reply:
+
+| Step | Degrades to |
+|---|---|
+| `classify_intent` | Keyword matching (`_keyword_fallback`) |
+| `intent_node` greeting | A canned greeting |
+| `rag_node` answer | The retrieved knowledge-base text, with a note that the answer service is down |
+| Lead collection and tool execution | Unaffected — neither calls the LLM |
+
+The replies are blunter and intent labelling is cruder, but nothing raises. A
+lead already in progress completes normally, since `intent_node` skips
+classification entirely mid-flow.
+
 ---
 
 ## Lead Capture

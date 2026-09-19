@@ -18,6 +18,15 @@ _MODEL = "gpt-4o-mini"
 # embedded spaces) without turning away unusual but valid addresses.
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$")
 
+# Used when the API is unreachable. classify_intent already degrades to keyword
+# matching, but that only helps if the node it routes to can still answer --
+# both of these nodes call the LLM again, and an unguarded call would take the
+# whole turn down exactly when the fallback was supposed to save it.
+_FALLBACK_GREETING = "Hello! I'm the AutoStream assistant. How can I help you today?"
+_ANSWER_UNAVAILABLE = (
+    "I can't reach the answer service right now — please try again shortly."
+)
+
 
 # ---------------------------------------------------------------------------
 # Node 1: Intent Classification
@@ -40,24 +49,28 @@ def intent_node(state: AgentState) -> dict:
     update: dict = {"intent": intent}
 
     if intent == "greeting":
-        response = client.chat.completions.create(
-            model=_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a friendly assistant for AutoStream, a video editing SaaS. "
-                        "Respond warmly to greetings."
-                    ),
-                },
-                {"role": "user", "content": state["user_message"]},
-            ],
-            max_tokens=100,
-            temperature=0.7,
-        )
-        reply = response.choices[0].message.content.strip()
+        try:
+            response = client.chat.completions.create(
+                model=_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a friendly assistant for AutoStream, a video editing SaaS. "
+                            "Respond warmly to greetings."
+                        ),
+                    },
+                    {"role": "user", "content": state["user_message"]},
+                ],
+                max_tokens=100,
+                temperature=0.7,
+            )
+            reply = response.choices[0].message.content.strip()
+            print(f"[IntentNode] Greeting detected — responding directly")
+        except Exception:
+            reply = _FALLBACK_GREETING
+            print("[IntentNode] Greeting detected — LLM unavailable, canned reply")
         update["response"] = reply
-        print(f"[IntentNode] Greeting detected — responding directly")
 
     return update
 
@@ -67,29 +80,41 @@ def intent_node(state: AgentState) -> dict:
 # ---------------------------------------------------------------------------
 
 def rag_node(state: AgentState) -> dict:
-    """Retrieves relevant knowledge and generates a grounded answer."""
+    """Retrieves relevant knowledge and generates a grounded answer.
+
+    If the answer call fails, the retrieved text is handed over as-is rather
+    than dropped: unphrased facts are more use to the reader than an error.
+    """
     context = retrieve(state["user_message"])
-    response = client.chat.completions.create(
-        model=_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a helpful assistant for AutoStream. "
-                    "Answer using only the context provided. Be concise and accurate."
-                ),
-            },
-            {
-                "role": "user",
-                "content": f"Context:\n{context}\n\nQuestion: {state['user_message']}",
-            },
-        ],
-        max_tokens=300,
-        temperature=0.3,
-    )
-    answer = response.choices[0].message.content.strip()
-    print(f"[RAGNode] Retrieved context and generated answer")
-    return {"response": answer}
+    try:
+        response = client.chat.completions.create(
+            model=_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a helpful assistant for AutoStream. "
+                        "Answer using only the context provided. Be concise and accurate."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Context:\n{context}\n\nQuestion: {state['user_message']}",
+                },
+            ],
+            max_tokens=300,
+            temperature=0.3,
+        )
+        answer = response.choices[0].message.content.strip()
+        print(f"[RAGNode] Retrieved context and generated answer")
+        return {"response": answer}
+    except Exception:
+        print("[RAGNode] Answer service unavailable — returning retrieved text")
+        if context.strip():
+            return {
+                "response": f"{_ANSWER_UNAVAILABLE}\n\nHere's what I have on file:\n{context}"
+            }
+        return {"response": _ANSWER_UNAVAILABLE}
 
 
 # ---------------------------------------------------------------------------
