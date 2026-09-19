@@ -9,27 +9,40 @@ Conversational AI agent that qualifies SaaS leads from social/messaging channels
 | Layer | Technology |
 |---|---|
 | Agent orchestration | LangGraph (StateGraph) |
-| LLM | OpenAI GPT-4o Mini (`openai`, `langchain-openai`) |
+| LLM | OpenAI GPT-4o Mini (`openai`) |
 | Retrieval | FAISS + sentence-transformers |
 | Lead storage | CSV (`leads.csv`) |
 | Config | python-dotenv |
 
 
 
-## Setup
+## Setup and tests
 
-**Prerequisites:** Python 3.10+
+**Tested on Python 3.13.9.** Other versions are untested.
 
 ```bash
+# Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+
 # Install dependencies
 pip install -r requirements.txt
 
 # Add your OpenAI API key
-echo "OPENAI_API_KEY=your_key_here" > .env
+cp .env.example .env               # then edit .env and paste your key
 
 # Run the agent
 python main.py
+
+# Run the tests
+python -m pytest tests
 ```
+
+The tests need no API key: every OpenAI call is stubbed, and `conftest.py`
+forces a dummy key so a real one in `.env` cannot leak into a run.
+
+The first run that touches retrieval downloads the `all-MiniLM-L6-v2`
+embedding model (~90 MB) and caches it locally.
 
 
 
@@ -50,12 +63,13 @@ agent/
   graph.py                LangGraph StateGraph — nodes + conditional routing
   nodes.py                4 nodes: intent, rag, lead_collection, tool_execution
 utils/
-  intent_classifier.py    OpenAI GPT-4o Mini classifier with keyword regex fallback
+  intent_classifier.py    OpenAI GPT-4o Mini classifier with keyword-matching fallback
 rag/
   retriever.py            FAISS index over knowledge.json (sentence-transformers)
   knowledge.json          Plans + policies knowledge base
 tools/
   lead_capture.py         mock_lead_capture() — fires only when all 3 fields collected
+tests/                    pytest suite — OpenAI calls stubbed, no API key needed
 leads.csv                 Auto-generated on first lead capture
 ```
 
@@ -91,17 +105,32 @@ The graph is stateless per-invocation. The CLI loop merges each result back into
 |---|---|
 | `intent_node` | Classifies message as `greeting`, `product_query`, or `high_intent`. Generates greeting response inline. Skips reclassification mid lead-collection. |
 | `rag_node` | Retrieves relevant chunks from FAISS index, generates a grounded answer using only that context. |
-| `lead_collection_node` | Steps through name → email → platform collection. Each turn stores one field and asks for the next. |
-| `tool_execution_node` | Validates all three fields, calls `mock_lead_capture()`, appends lead to `leads.csv`. |
+| `lead_collection_node` | Steps through name → email → platform collection. Each turn validates one answer and stores it, or re-asks on invalid input. |
+| `tool_execution_node` | Re-checks all three fields, calls `mock_lead_capture()`, appends lead to `leads.csv`, then resets the flow. |
 
 ---
 
 ## Lead Capture
 
+Each answer is validated before the flow advances:
+
+| Field | Rule |
+|---|---|
+| Name | Non-empty |
+| Email | Must match `^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$` — catches a missing `@`, a missing TLD and embedded spaces |
+| Platform | Non-empty |
+
+Invalid input re-asks the same question and does not advance the step, so
+nothing already collected is lost. `tool_execution_node` re-checks all three
+before firing the tool and resets the flow if any is missing.
+
 Once all three fields (name, email, platform) are collected, the agent fires `mock_lead_capture()` which:
 
 - Prints a confirmation to the terminal
 - Appends a row to `leads.csv` with a timestamp
+
+The flow then resets, so a later high-intent message starts a fresh lead
+rather than re-capturing the previous one.
 
 ```
 Name,Email,Platform,Timestamp
