@@ -155,10 +155,16 @@ def tool_execution_node(state: AgentState) -> dict:
     mock_lead_capture(name, email, platform)
     print(f"[ToolExecutionNode] Lead capture executed for {name}")
 
+    # Reset the flow so a later high-intent message starts fresh instead of
+    # re-routing here (step == "complete") and capturing the same lead again.
     return {
         "response": (
             f"You're all set, {name}! Your interest in the Pro plan has been recorded. "
             "Our team will reach out to you shortly. Welcome to AutoStream!"
         ),
         "lead_captured": True,
+        "lead_collection_step": None,
+        "lead_name": None,
+        "lead_email": None,
+        "lead_platform": None,
     }
