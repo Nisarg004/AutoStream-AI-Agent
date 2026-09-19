@@ -78,7 +78,6 @@ leads.csv                 Auto-generated on first lead capture
 ```python
 class AgentState(TypedDict):
     user_message: str
-    chat_history: list[dict]
     response: str
     intent: Optional[Literal["greeting", "product_query", "high_intent"]]
     lead_name: Optional[str]

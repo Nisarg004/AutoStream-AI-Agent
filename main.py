@@ -33,7 +33,6 @@ def run_chat() -> None:
     # Persistent state across turns
     state: AgentState = {
         "user_message": "",
-        "chat_history": [],
         "response": "",
         "intent": None,
         "lead_name": None,
@@ -64,10 +63,6 @@ def run_chat() -> None:
 
         # Merge result back into persistent state
         state.update(result)
-
-        # Append this turn to history
-        state["chat_history"].append({"role": "user", "content": user_input})
-        state["chat_history"].append({"role": "assistant", "content": state["response"]})
 
         print(f"\nAssistant: {state['response']}")
 

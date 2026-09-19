@@ -14,7 +14,6 @@ from agent.graph import graph
 def _new_state() -> dict:
     return {
         "user_message": "",
-        "chat_history": [],
         "response": "",
         "intent": None,
         "lead_name": None,

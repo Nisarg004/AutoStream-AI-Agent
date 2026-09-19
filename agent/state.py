@@ -7,7 +7,6 @@ class AgentState(TypedDict):
 
     # Conversation
     user_message: str
-    chat_history: list[dict]
     response: str
 
     # Intent classification
