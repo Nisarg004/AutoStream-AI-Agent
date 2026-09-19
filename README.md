@@ -70,6 +70,7 @@ rag/
 tools/
   lead_capture.py         mock_lead_capture() — fires only when all 3 fields collected
 tests/                    pytest suite — OpenAI calls stubbed, no API key needed
+eval/                     Intent classification accuracy check — needs an API key
 leads.csv                 Auto-generated on first lead capture
 ```
 
@@ -137,6 +138,33 @@ Jane Doe,jane@example.com,YouTube,2026-04-13 01:00:00
 ```
 
 
+
+## Evaluation
+
+```bash
+python eval/run_eval.py     # writes eval/RESULTS.md
+```
+
+Scores two classifiers on the same 36 messages: the real `gpt-4o-mini` call,
+and `_keyword_fallback` alone. Prints overall accuracy, per-label accuracy and
+a confusion table for each, and writes the full breakdown with every
+misclassified message to [eval/RESULTS.md](eval/RESULTS.md).
+
+Latest run (2026-09-19): **LLM 36/36, keyword fallback 25/36**, 0 API errors.
+The fallback's misses are concentrated in `product_query` (6/12) and
+`high_intent` (7/12) — it reads "pro plan" in a pricing question as buying
+intent, and misses intent phrased without its keywords, such as "take my
+money" or "where do I pay?".
+
+Two caveats worth stating plainly:
+
+- The dataset is **36 hand-written messages** in [eval/intents.json](eval/intents.json),
+  12 per label. That is a sanity check, not a benchmark, and a perfect score
+  on it says nothing about production traffic.
+- **`eval/` needs a real `OPENAI_API_KEY`; the test suite does not.** The eval
+  calls the API directly rather than through `classify_intent`, because that
+  function catches every exception and falls back to keywords — an outage or a
+  dead key would otherwise score as a healthy LLM result instead of an error.
 
 ## WhatsApp Integration
 

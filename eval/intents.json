@@ -1,0 +1,80 @@
+{
+  "description": "36 hand-written messages for intent classification, 12 per label. Labels are the ones a human would defend for a lead-capture assistant; ambiguous cases carry a note explaining the call. Written to be realistic, not to favour either classifier.",
+  "labels": ["greeting", "product_query", "high_intent"],
+  "messages": [
+    { "message": "hi", "label": "greeting" },
+    { "message": "hello there", "label": "greeting" },
+    { "message": "hey!", "label": "greeting" },
+    { "message": "good morning", "label": "greeting" },
+    { "message": "yo", "label": "greeting" },
+    { "message": "how's it going?", "label": "greeting" },
+    { "message": "thanks!", "label": "greeting" },
+    { "message": "thank you, that's really helpful", "label": "greeting" },
+    { "message": "haha nice", "label": "greeting" },
+    {
+      "message": "ok cool",
+      "label": "greeting",
+      "note": "Bare acknowledgement with no request attached. Defended as greeting under the prompt's 'casual conversation', though in a real transcript it carries almost no signal on its own."
+    },
+    {
+      "message": "who are you?",
+      "label": "greeting",
+      "note": "A question, but about the assistant rather than the product, so not product_query. Genuinely arguable."
+    },
+    { "message": "alright, talk later", "label": "greeting" },
+
+    { "message": "how much is the pro plan?", "label": "product_query" },
+    { "message": "what's included in the basic plan?", "label": "product_query" },
+    { "message": "do you offer refunds?", "label": "product_query" },
+    { "message": "what resolution does the basic plan support?", "label": "product_query" },
+    { "message": "is 24/7 support included?", "label": "product_query" },
+    { "message": "what's the difference between basic and pro?", "label": "product_query" },
+    { "message": "how many videos can I edit per month?", "label": "product_query" },
+    { "message": "do you have AI captions?", "label": "product_query" },
+    { "message": "can I get a refund after 10 days?", "label": "product_query" },
+    {
+      "message": "hey, how much is pro?",
+      "label": "product_query",
+      "note": "Opens with a greeting, but the actual request is pricing. A classifier that reads only the first two words gets this wrong."
+    },
+    {
+      "message": "sounds good, tell me more",
+      "label": "product_query",
+      "note": "Positive acknowledgement plus a request for information. Labelled product_query rather than high_intent because there is no explicit move to sign up, buy or start."
+    },
+    {
+      "message": "is there a free trial?",
+      "label": "product_query",
+      "note": "Asking whether a trial exists is a question about plans, not a request to start one. The word 'trial' sits close to the high_intent keyword 'try'."
+    },
+
+    { "message": "I want to sign up", "label": "high_intent" },
+    { "message": "I'd like to subscribe to the pro plan", "label": "high_intent" },
+    { "message": "sign me up for pro", "label": "high_intent" },
+    { "message": "I'm ready to buy", "label": "high_intent" },
+    {
+      "message": "take my money",
+      "label": "high_intent",
+      "note": "Idiomatic buying intent carrying none of the literal keywords."
+    },
+    {
+      "message": "how do I get started?",
+      "label": "high_intent",
+      "note": "Phrased as a question, but the ask is to begin rather than to learn. Defensible as product_query; labelled high_intent because starting the lead flow is the better failure mode here."
+    },
+    { "message": "I want to try the pro plan", "label": "high_intent" },
+    { "message": "can I purchase the basic plan?", "label": "high_intent" },
+    {
+      "message": "let's do it",
+      "label": "high_intent",
+      "note": "Agreement to proceed. Depends on the previous turn, which a single-message classifier cannot see; labelled from the lead-capture context."
+    },
+    { "message": "where do I pay?", "label": "high_intent" },
+    {
+      "message": "yes, set me up",
+      "label": "high_intent",
+      "note": "Explicit instruction to proceed, but expressed with none of the keyword vocabulary."
+    },
+    { "message": "I'll take the pro plan", "label": "high_intent" }
+  ]
+}
