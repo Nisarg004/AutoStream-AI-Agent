@@ -1,10 +1,9 @@
-langgraph
-openai
-langchain-openai
-sentence-transformers
-faiss-cpu
-numpy
-python-dotenv
+langgraph==1.2.9
+openai==2.31.0
+sentence-transformers==5.4.0
+faiss-cpu==1.13.2
+numpy==2.3.5
+python-dotenv==1.1.0
 
 # Testing
-pytest
+pytest==8.4.2
