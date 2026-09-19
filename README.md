@@ -145,22 +145,44 @@ Jane Doe,jane@example.com,YouTube,2026-04-13 01:00:00
 python eval/run_eval.py     # writes eval/RESULTS.md
 ```
 
-Scores two classifiers on the same 36 messages: the real `gpt-4o-mini` call,
-and `_keyword_fallback` alone. Prints overall accuracy, per-label accuracy and
-a confusion table for each, and writes the full breakdown with every
-misclassified message to [eval/RESULTS.md](eval/RESULTS.md).
+Scores the real `gpt-4o-mini` call and the keyword fallback — both the current
+rules and the pre-rewrite rules frozen in
+[eval/baseline_keyword.py](eval/baseline_keyword.py) — over two datasets.
+Prints overall accuracy, per-label accuracy and a confusion table for each,
+and writes the full breakdown with every misclassified message to
+[eval/RESULTS.md](eval/RESULTS.md).
 
-Latest run (2026-09-19): **LLM 36/36, keyword fallback 25/36**, 0 API errors.
-The fallback's misses are concentrated in `product_query` (6/12) and
-`high_intent` (7/12) — it reads "pro plan" in a pricing question as buying
-intent, and misses intent phrased without its keywords, such as "take my
-money" or "where do I pay?".
+There are two datasets, and the difference between them matters:
 
-Two caveats worth stating plainly:
+- [eval/intents.json](eval/intents.json) — 36 messages, 12 per label. Its
+  misses were read and used to rewrite the fallback, so its score is a
+  description of the fix, not evidence for it.
+- [eval/intents_heldout.json](eval/intents_heldout.json) — 30 messages, 10 per
+  label, written and committed *before* the rules were touched, with phrasings
+  that avoid the vocabulary the first set leans on. **This is the honest
+  number.**
 
-- The dataset is **36 hand-written messages** in [eval/intents.json](eval/intents.json),
-  12 per label. That is a sanity check, not a benchmark, and a perfect score
-  on it says nothing about production traffic.
+Latest run (2026-09-19), 0 API errors:
+
+| Dataset | LLM | Keyword before | Keyword after |
+|---|---|---|---|
+| Original 36 | 36/36 | 25/36 (69.4%) | 36/36 (100%) |
+| Held-out 30 | 30/30 | 14/30 (46.7%) | 26/30 (86.7%) |
+
+On the held-out set the rewrite moved `product_query` from 3/10 to 10/10 and
+`high_intent` from 1/10 to 9/10. `greeting` went the other way, 10/10 to 7/10:
+the old rules scored perfectly there only because "greeting" was the silent
+default that everything unrecognised fell into. That trade is deliberate —
+misreading a question as a greeting is worse than the reverse. The four
+remaining misses are listed in [eval/RESULTS.md](eval/RESULTS.md) and were not
+tuned away after being seen.
+
+Three caveats worth stating plainly:
+
+- Both datasets are small and hand-written, **by the same author as the
+  rules**. A held-out set written by someone else would be a stronger test.
+- The LLM scores 100% on both sets. On 66 easy, hand-written messages that
+  means "no obvious failure", not a quality claim.
 - **`eval/` needs a real `OPENAI_API_KEY`; the test suite does not.** The eval
   calls the API directly rather than through `classify_intent`, because that
   function catches every exception and falls back to keywords — an outage or a

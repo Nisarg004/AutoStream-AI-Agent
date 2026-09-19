@@ -26,10 +26,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from baseline_keyword import keyword_fallback_before
 from utils.intent_classifier import _keyword_fallback
 
 load_dotenv()
@@ -192,8 +194,10 @@ def main() -> None:
 
         print("  LLM (one API call per message)...")
         llm = summarise(evaluate(classify_llm, items))
-        print("  keyword fallback...")
-        keyword = summarise(evaluate(_keyword_fallback, items))
+        print("  keyword fallback, before...")
+        before = summarise(evaluate(keyword_fallback_before, items))
+        print("  keyword fallback, after...")
+        after = summarise(evaluate(_keyword_fallback, items))
 
         sections.append("\n".join([
             f"## {title} — `eval/{path.name}` ({len(items)} messages, {spread})",
@@ -201,11 +205,13 @@ def main() -> None:
             data["description"],
             "",
             render(f"LLM classifier (`{MODEL}`)", llm),
-            render("Keyword fallback (`_keyword_fallback`)", keyword),
+            render("Keyword fallback — BEFORE (`eval/baseline_keyword.py`)", before),
+            render("Keyword fallback — AFTER (`utils/intent_classifier.py`)", after),
         ]))
         headline.append(
             f"| {title} | {_pct(llm['correct'], llm['scored'])} | "
-            f"{_pct(keyword['correct'], keyword['scored'])} | {len(llm['errors'])} |"
+            f"{_pct(before['correct'], before['scored'])} | "
+            f"{_pct(after['correct'], after['scored'])} | {len(llm['errors'])} |"
         )
 
     body = "\n".join([
@@ -213,18 +219,22 @@ def main() -> None:
         "",
         f"- Run: {datetime.now():%Y-%m-%d %H:%M} local time",
         f"- Model: `{MODEL}` (temperature 0, max_tokens 10)",
-        f"- Keyword fallback: **before** — the original rules, not yet changed",
         f"- Prompt copy in sync with `utils/intent_classifier.py`: "
         f"{'yes' if in_sync else 'NO — ' + str(missing)}",
+        "- **before** = the rules frozen in `eval/baseline_keyword.py`; "
+        "**after** = the rules live in `utils/intent_classifier.py`",
         "",
-        "| Dataset | LLM | Keyword fallback (before) | API errors |",
-        "|---|---|---|---|",
+        "| Dataset | LLM | Keyword BEFORE | Keyword AFTER | API errors |",
+        "|---|---|---|---|---|",
         *headline,
         "",
+        "**The original set informed the rewrite, so its 'after' number is not",
+        "evidence of anything — the misses there were read and fixed directly.",
+        "The held-out number is the fair one.** It was written and committed",
+        "before the rules were touched.",
+        "",
         "Both sets are hand-written and small, so these are sanity checks rather",
-        "than benchmarks. The original set has already been read and reasoned",
-        "about; the held-out set was written before any change to the fallback and",
-        "is the fairer of the two.",
+        "than benchmarks, and both were written by the same author as the rules.",
         "",
         "The LLM path calls the API directly rather than through `classify_intent`,",
         "which catches every exception and falls back to keywords — that would hide",
