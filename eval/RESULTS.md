@@ -3,7 +3,7 @@
 - Run: 2026-09-19 21:03 local time
 - Model: `gpt-4o-mini` (temperature 0, max_tokens 10)
 - Prompt copy in sync with `utils/intent_classifier.py`: yes
-- **before** = the rules frozen in `eval/baseline_keyword.py`; **after** = the rules live in `utils/intent_classifier.py`
+- **before** = the rules frozen in `eval/baseline_keyword.py`; **after** = the rules live at that run, now frozen in `eval/baseline_keyword_v1.py`
 
 | Dataset | LLM | Keyword BEFORE | Keyword AFTER | API errors |
 |---|---|---|---|---|
@@ -11,9 +11,9 @@
 | Held-out set | 30/30 (100.0%) | 14/30 (46.7%) | 26/30 (86.7%) | 0 |
 
 **The original set informed the rewrite, so its 'after' number is not
-evidence of anything — the misses there were read and fixed directly.
-The held-out number is the fair one.** It was written and committed
-before the rules were touched.
+evidence of anything. The older held-out set is not clean either: its misses
+were committed minutes before the rewrite, so see `eval/PROVENANCE.md` before
+citing its numbers. `eval/heldout.jsonl` is the current held-out set.**
 
 Both sets are hand-written and small, so these are sanity checks rather
 than benchmarks, and both were written by the same author as the rules.
