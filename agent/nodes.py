@@ -29,6 +29,20 @@ _ANSWER_UNAVAILABLE = (
     "I can't reach the answer service right now — please try again shortly."
 )
 
+# How many past messages each LLM call sees: five exchanges.
+_HISTORY_WINDOW = 10
+
+
+def _recent_history(state: AgentState) -> list[dict]:
+    return list(state.get("chat_history") or [])[-_HISTORY_WINDOW:]
+
+
+def _exchange(user_message: str, reply: str) -> list[dict]:
+    return [
+        {"role": "user", "content": user_message},
+        {"role": "assistant", "content": reply},
+    ]
+
 
 # ---------------------------------------------------------------------------
 # Node 1: Intent Classification
@@ -62,6 +76,7 @@ def intent_node(state: AgentState) -> dict:
                             "Respond warmly to greetings."
                         ),
                     },
+                    *_recent_history(state),
                     {"role": "user", "content": state["user_message"]},
                 ],
                 max_tokens=100,
@@ -73,6 +88,7 @@ def intent_node(state: AgentState) -> dict:
             reply = _FALLBACK_GREETING
             print("[IntentNode] Greeting detected — LLM unavailable, canned reply")
         update["response"] = reply
+        update["chat_history"] = _exchange(state["user_message"], reply)
 
     return update
 
@@ -96,9 +112,11 @@ def rag_node(state: AgentState) -> dict:
                     "role": "system",
                     "content": (
                         "You are a helpful assistant for AutoStream. "
-                        "Answer using only the context provided. Be concise and accurate."
+                        "Answer using only the context provided. Be concise and accurate. "
+                        "Earlier messages are there only to resolve references such as 'it'."
                     ),
                 },
+                *_recent_history(state),
                 {
                     "role": "user",
                     "content": f"Context:\n{context}\n\nQuestion: {state['user_message']}",
@@ -109,14 +127,12 @@ def rag_node(state: AgentState) -> dict:
         )
         answer = response.choices[0].message.content.strip()
         print(f"[RAGNode] Retrieved context and generated answer")
-        return {"response": answer}
     except Exception:
         print("[RAGNode] Answer service unavailable — returning retrieved text")
+        answer = _ANSWER_UNAVAILABLE
         if context.strip():
-            return {
-                "response": f"{_ANSWER_UNAVAILABLE}\n\nHere's what I have on file:\n{context}"
-            }
-        return {"response": _ANSWER_UNAVAILABLE}
+            answer = f"{_ANSWER_UNAVAILABLE}\n\nHere's what I have on file:\n{context}"
+    return {"response": answer, "chat_history": _exchange(state["user_message"], answer)}
 
 
 # ---------------------------------------------------------------------------

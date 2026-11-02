@@ -1,3 +1,4 @@
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, END
 
 from agent.state import AgentState
@@ -40,7 +41,7 @@ def route_after_lead_collection(state: AgentState) -> str:
 # Build and compile the graph
 # ---------------------------------------------------------------------------
 
-def build_graph() -> StateGraph:
+def build_graph(checkpointer=None):
     builder = StateGraph(AgentState)
 
     # Register nodes
@@ -58,7 +59,8 @@ def build_graph() -> StateGraph:
     builder.add_conditional_edges("lead_collection", route_after_lead_collection)
     builder.add_edge("tool_execution", END)
 
-    return builder.compile()
+    return builder.compile(checkpointer=checkpointer)
 
 
-graph = build_graph()
+# State is keyed by thread_id and lives in this process only.
+graph = build_graph(MemorySaver())

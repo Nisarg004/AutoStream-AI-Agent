@@ -49,7 +49,7 @@ Single held-out run from clean commit `5c3a2b9`, with the set unchanged since
   statement, both as predicted.
 - **Remaining misses:** `who am I talking to?`, `helo`, `I'll go with Pro` and
   `Where do I enter my card?`. These are the predicted unseen idioms and typos.
-- **Known dev miss, left unfixed:** `d38` scored correctly before the action-question
+- **Known dev miss, left unfixed:** `d39` (`We are ready to purchase. Who do we talk to?`) scored correctly before the action-question
   pattern was anchored, then failed. I saw the drop to 39/40 only after that commit
   was final and the held-out run had happened, and fixing it now would change the
   rules after the held-out run.

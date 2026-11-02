@@ -7,6 +7,8 @@ so the guards cannot quietly change a successful answer.
 """
 from unittest.mock import MagicMock
 
+import uuid
+
 import pytest
 
 import agent.nodes as nodes
@@ -24,6 +26,10 @@ def _client_returning(text: str) -> MagicMock:
     client = MagicMock()
     client.chat.completions.create.return_value.choices[0].message.content = text
     return client
+
+
+def _invoke(state: dict) -> dict:
+    return graph.invoke(state, {"configurable": {"thread_id": str(uuid.uuid4())}})
 
 
 def _state(message: str) -> dict:
@@ -97,7 +103,7 @@ def total_outage(monkeypatch):
 
 
 def test_greeting_turn_survives_a_total_outage(total_outage):
-    result = graph.invoke(_state("hi"))
+    result = _invoke(_state("hi"))
 
     assert result["intent"] == "greeting", "keyword fallback should still label it"
     assert result["response"].strip()
@@ -106,7 +112,7 @@ def test_greeting_turn_survives_a_total_outage(total_outage):
 def test_product_query_turn_survives_a_total_outage(total_outage, monkeypatch):
     monkeypatch.setattr(nodes, "retrieve", lambda q: "Pro Plan: $79/month.")
 
-    result = graph.invoke(_state("how much is the pro plan?"))
+    result = _invoke(_state("how much is the pro plan?"))
 
     assert result["intent"] == "product_query"
     assert "$79/month" in result["response"], "the retrieved facts should survive"
@@ -114,7 +120,7 @@ def test_product_query_turn_survives_a_total_outage(total_outage, monkeypatch):
 
 def test_lead_flow_turn_survives_a_total_outage(total_outage):
     """The lead path never calls the LLM, so it should be untouched."""
-    result = graph.invoke(_state("I want to sign up"))
+    result = _invoke(_state("I want to sign up"))
 
     assert result["intent"] == "high_intent"
     assert result["lead_collection_step"] == "ask_name"

@@ -1,4 +1,5 @@
-from typing import Literal, Optional, TypedDict
+import operator
+from typing import Annotated, Literal, Optional, TypedDict
 
 
 class AgentState(TypedDict):
@@ -7,6 +8,9 @@ class AgentState(TypedDict):
     # Conversation
     user_message: str
     response: str
+    # Greeting and product exchanges only. Lead answers stay out, so personal
+    # details are never sent to the LLM in a later turn's history.
+    chat_history: Annotated[list[dict], operator.add]
 
     # Intent classification
     intent: Optional[Literal["greeting", "product_query", "high_intent"]]

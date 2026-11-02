@@ -1,10 +1,12 @@
 """Regression tests for the multi-turn lead capture flow.
 
-These drive the real compiled LangGraph the same way main.run_chat does
-(persistent state dict, merged after every turn). The LLM intent classifier
+These drive the real compiled LangGraph the same way main.run_chat does: one
+message per invoke, with the checkpointer holding state. The LLM intent classifier
 and the capture tool are stubbed by the `captured` fixture in conftest.py,
 so no network access or API key is needed.
 """
+import uuid
+
 import pytest
 
 import agent.nodes as nodes
@@ -25,9 +27,10 @@ def _new_state() -> dict:
 
 
 def _turn(state: dict, message: str) -> None:
-    """One CLI turn: inject message, invoke graph, merge result back."""
-    state["user_message"] = message
-    state.update(graph.invoke(state))
+    """One CLI turn. `state` only mirrors the checkpoint for assertions."""
+    thread_id = state.setdefault("_thread_id", str(uuid.uuid4()))
+    config = {"configurable": {"thread_id": thread_id}}
+    state.update(graph.invoke({"user_message": message}, config))
 
 
 def _run_lead_flow(state: dict, name: str, email: str, platform: str) -> None:

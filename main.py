@@ -6,6 +6,7 @@ CLI-based conversational agent powered by LangGraph + OpenAI GPT-4o Mini.
 import os
 import warnings
 import logging
+import uuid
 
 # Suppress HuggingFace / transformers noise before any heavy imports
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -21,7 +22,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from agent.graph import graph
-from agent.state import AgentState
 
 
 def run_chat() -> None:
@@ -30,17 +30,8 @@ def run_chat() -> None:
     print("  Type 'quit' or 'exit' to stop.")
     print("=" * 60)
 
-    # Persistent state across turns
-    state: AgentState = {
-        "user_message": "",
-        "response": "",
-        "intent": None,
-        "lead_name": None,
-        "lead_email": None,
-        "lead_platform": None,
-        "lead_collection_step": None,
-        "lead_captured": False,
-    }
+    # The checkpointer keeps state between turns, keyed by this thread.
+    config = {"configurable": {"thread_id": str(uuid.uuid4())}}
 
     while True:
         try:
@@ -55,16 +46,9 @@ def run_chat() -> None:
             print("Goodbye!")
             break
 
-        # Inject new user message; preserve the rest of the state
-        state["user_message"] = user_input
+        result = graph.invoke({"user_message": user_input}, config)
 
-        # Run one turn through the graph
-        result = graph.invoke(state)
-
-        # Merge result back into persistent state
-        state.update(result)
-
-        print(f"\nAssistant: {state['response']}")
+        print(f"\nAssistant: {result['response']}")
 
 
 if __name__ == "__main__":
