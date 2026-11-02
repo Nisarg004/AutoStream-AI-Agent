@@ -1,0 +1,30 @@
+{"id": "h01", "message": "hiya, just saying hello", "label": "greeting"}
+{"id": "h02", "message": "thanks so much, that helped!", "label": "greeting"}
+{"id": "h03", "message": "ok bye for now", "label": "greeting"}
+{"id": "h04", "message": "gd morning", "label": "greeting"}
+{"id": "h05", "message": "Hey! Hope you're having a nice day.", "label": "greeting"}
+{"id": "h06", "message": "thx a lot", "label": "greeting"}
+{"id": "h07", "message": "who am I talking to?", "label": "greeting"}
+{"id": "h08", "message": "hello?? is this thing on", "label": "greeting"}
+{"id": "h09", "message": "Great, thank you. Have a nice weekend!", "label": "greeting"}
+{"id": "h10", "message": "helo", "label": "greeting"}
+{"id": "h11", "message": "What's the price of the Basic plan?", "label": "product_query"}
+{"id": "h12", "message": "I want to know whether Pro includes captions", "label": "product_query"}
+{"id": "h13", "message": "Is there any way to get my money returned after two weeks?", "label": "product_query"}
+{"id": "h14", "message": "how much for teh pro plan", "label": "product_query"}
+{"id": "h15", "message": "I run a channel from another country, does 4K work there?", "label": "product_query"}
+{"id": "h16", "message": "If I restart my subscription later, do I keep the same price?", "label": "product_query"}
+{"id": "h17", "message": "We're a small team. We post about 20 videos a month. Which plan makes sense?", "label": "product_query"}
+{"id": "h18", "message": "whats teh diference between the two plans", "label": "product_query"}
+{"id": "h19", "message": "do you do subtitles", "label": "product_query"}
+{"id": "h20", "message": "Before I buy anything, what's your refund window?", "label": "product_query"}
+{"id": "h21", "message": "sounds great, sign me up please", "label": "high_intent"}
+{"id": "h22", "message": "I'll go with Pro", "label": "high_intent"}
+{"id": "h23", "message": "ready to subscribe to the basic plan", "label": "high_intent"}
+{"id": "h24", "message": "Let's get started. My team needs this.", "label": "high_intent"}
+{"id": "h25", "message": "i wanna buy pro", "label": "high_intent"}
+{"id": "h26", "message": "how do i sign up", "label": "high_intent"}
+{"id": "h27", "message": "We've compared the options. We want the Pro plan.", "label": "high_intent"}
+{"id": "h28", "message": "sing me up", "label": "high_intent"}
+{"id": "h29", "message": "yes please, let's go ahead with it", "label": "high_intent"}
+{"id": "h30", "message": "Where do I enter my card?", "label": "high_intent"}

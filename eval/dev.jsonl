@@ -1,0 +1,40 @@
+{"id": "d01", "message": "hi there", "label": "greeting"}
+{"id": "d02", "message": "Hello!", "label": "greeting"}
+{"id": "d03", "message": "hey how's it going", "label": "greeting"}
+{"id": "d04", "message": "thanks!", "label": "greeting"}
+{"id": "d05", "message": "thank you, bye", "label": "greeting"}
+{"id": "d06", "message": "goodbye", "label": "greeting"}
+{"id": "d07", "message": "good evening", "label": "greeting"}
+{"id": "d08", "message": "hii", "label": "greeting"}
+{"id": "d09", "message": "heyy", "label": "greeting"}
+{"id": "d10", "message": "ty", "label": "greeting"}
+{"id": "d11", "message": "see ya later", "label": "greeting"}
+{"id": "d12", "message": "are you a bot?", "label": "greeting"}
+{"id": "d13", "message": "what's your name?", "label": "greeting"}
+{"id": "d14", "message": "Thanks for the help. Talk soon!", "label": "greeting"}
+{"id": "d15", "message": "What does the Pro plan cost?", "label": "product_query"}
+{"id": "d16", "message": "I want to know the refund policy", "label": "product_query"}
+{"id": "d17", "message": "country", "label": "product_query"}
+{"id": "d18", "message": "restart", "label": "product_query"}
+{"id": "d19", "message": "what's included in pro", "label": "product_query"}
+{"id": "d20", "message": "how much is basic per month", "label": "product_query"}
+{"id": "d21", "message": "refnd policy?", "label": "product_query"}
+{"id": "d22", "message": "does basic have ai captons", "label": "product_query"}
+{"id": "d23", "message": "I'd love to understand the difference. Is Pro worth it for a solo creator?", "label": "product_query"}
+{"id": "d24", "message": "Is 24/7 support on every plan?", "label": "product_query"}
+{"id": "d25", "message": "can i try it free before paying?", "label": "product_query"}
+{"id": "d26", "message": "Do you offer annual billing?", "label": "product_query"}
+{"id": "d27", "message": "What resolution do exports come out at?", "label": "product_query"}
+{"id": "d28", "message": "sounds good, sign me up", "label": "high_intent"}
+{"id": "d29", "message": "Sign me up for the Basic plan", "label": "high_intent"}
+{"id": "d30", "message": "I want to buy Pro", "label": "high_intent"}
+{"id": "d31", "message": "I'd like to subscribe", "label": "high_intent"}
+{"id": "d32", "message": "let's start", "label": "high_intent"}
+{"id": "d33", "message": "i want the pro plan", "label": "high_intent"}
+{"id": "d34", "message": "signup", "label": "high_intent"}
+{"id": "d35", "message": "i wnat to subscirbe", "label": "high_intent"}
+{"id": "d36", "message": "I've seen enough. Let's do this.", "label": "high_intent"}
+{"id": "d37", "message": "take my payment", "label": "high_intent"}
+{"id": "d38", "message": "I want to try it", "label": "high_intent"}
+{"id": "d39", "message": "We are ready to purchase. Who do we talk to?", "label": "high_intent"}
+{"id": "d40", "message": "get me on the pro plan", "label": "high_intent"}
