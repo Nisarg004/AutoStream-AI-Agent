@@ -1,249 +1,165 @@
-"""Intent classification evaluation.
+"""Score a keyword classifier on a labelled set. Needs no API key.
 
-Scores two classifiers on eval/intents.json:
+    python eval/run_eval.py                               # heldout, current rules
+    python eval/run_eval.py --set dev --classifier v1
+    python eval/run_eval.py --set heldout --summary-only  # hide per-message misses
 
-  llm      the real gpt-4o-mini call, made directly here
-  keyword  utils.intent_classifier._keyword_fallback, alone
+Classifiers:
+  current  utils.intent_classifier._keyword_fallback
+  v1       eval/baseline_keyword_v1.py, the rules at commit 309d6c5
+  v0       eval/baseline_keyword.py, the pre-rewrite rules
 
-The LLM path deliberately does NOT call classify_intent. That function
-catches every exception and falls back to keywords, so an API outage, an
-expired key or a quota block would silently score as keyword accuracy and
-look like a healthy LLM result. Calling the API directly means a failure is
-counted as an error and reported separately.
+Each run writes eval/results/<timestamp>_<set>_<classifier>.json, including the
+misclassified messages. --summary-only only limits what is printed, so held-out
+misses need not be seen while the rules are still being changed.
 
-Requires OPENAI_API_KEY (unlike the test suite, which stubs every call).
-Run from the project root:  python eval/run_eval.py
+eval/run_llm_eval.py scores the real gpt-4o-mini call and needs a key.
 """
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
-import os
-import re
+import math
+import subprocess
 import sys
-from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from dotenv import load_dotenv
-from openai import OpenAI
-
-from baseline_keyword import keyword_fallback_before
-from utils.intent_classifier import _keyword_fallback
-
-load_dotenv()
-
 HERE = Path(__file__).resolve().parent
-DATASETS = [
-    ("Original set", HERE / "intents.json"),
-    ("Held-out set", HERE / "intents_heldout.json"),
-]
-RESULTS = HERE / "RESULTS.md"
-CLASSIFIER_SRC = ROOT / "utils" / "intent_classifier.py"
+ROOT = HERE.parent
+sys.path[:0] = [str(ROOT), str(HERE)]
 
-MODEL = "gpt-4o-mini"
 LABELS = ["greeting", "product_query", "high_intent"]
-
-# Copied verbatim from utils.intent_classifier.classify_intent. Copying means
-# the two can drift apart, so _prompt_sync_status() re-reads the source and
-# reports whether every line is still present there.
-SYSTEM_PROMPT = (
-    "Classify the user message into exactly one of: "
-    "greeting, product_query, high_intent.\n"
-    "- greeting: hellos, hi, hey, thanks, casual conversation\n"
-    "- product_query: questions about pricing, features, plans, policies\n"
-    "- high_intent: user wants to sign up, buy, try, start, or subscribe\n"
-    "Return only the label, nothing else. No explanation."
-)
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+SETS = {"dev": HERE / "dev.jsonl", "heldout": HERE / "heldout.jsonl"}
+RESULTS_DIR = HERE / "results"
 
 
-def _prompt_sync_status() -> tuple[bool, list[str]]:
-    """Check every line of the copied prompt still appears in the agent source.
+def get_classifier(name: str):
+    if name == "current":
+        from utils.intent_classifier import _keyword_fallback
 
-    Adjacent string literals are joined first: the source writes the prompt as
-    several literals on consecutive lines, so a prompt line can span two of
-    them and would otherwise look missing.
-    """
-    source = re.sub(r'"\s*\n\s*"', "", CLASSIFIER_SRC.read_text())
-    missing = [line for line in SYSTEM_PROMPT.split("\n") if line and line not in source]
-    in_sync = not missing and f'"{MODEL}"' in source
-    return in_sync, missing
+        return _keyword_fallback
+    if name == "v1":
+        from baseline_keyword_v1 import _keyword_fallback
 
+        return _keyword_fallback
+    if name == "v0":
+        from baseline_keyword import keyword_fallback_before
 
-def classify_llm(message: str) -> str:
-    """One direct API call. Raises on failure; nothing is caught here."""
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": message},
-        ],
-        max_tokens=10,
-        temperature=0,
-    )
-    return response.choices[0].message.content.strip().lower()
+        return keyword_fallback_before
+    raise ValueError(f"unknown classifier: {name}")
 
 
-def evaluate(predict, items: list[dict]) -> list[dict]:
-    rows = []
+def load_set(path: Path) -> list[dict]:
+    items = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
     for item in items:
-        row = {"message": item["message"], "true": item["label"], "pred": None, "error": None}
-        try:
-            row["pred"] = predict(item["message"])
-        except Exception as exc:  # counted, never silently absorbed
-            row["error"] = f"{type(exc).__name__}: {exc}"
-        rows.append(row)
-    return rows
+        if set(item) != {"id", "message", "label"} or item["label"] not in LABELS:
+            raise ValueError(f"bad row in {path}: {item}")
+    return items
 
 
-def summarise(rows: list[dict]) -> dict:
-    scored = [r for r in rows if r["error"] is None]
-    errors = [r for r in rows if r["error"] is not None]
-    correct = [r for r in scored if r["pred"] == r["true"]]
+def wilson_interval(correct: int, total: int, z: float = 1.959964) -> tuple[float, float]:
+    """Wilson score interval for a proportion, 95% by default."""
+    if total == 0:
+        return (0.0, 0.0)
+    p = correct / total
+    denominator = 1 + z**2 / total
+    centre = (p + z**2 / (2 * total)) / denominator
+    margin = z * math.sqrt(p * (1 - p) / total + z**2 / (4 * total**2)) / denominator
+    return (max(0.0, centre - margin), min(1.0, centre + margin))
 
-    per_label = {}
-    for label in LABELS:
-        group = [r for r in scored if r["true"] == label]
-        hits = [r for r in group if r["pred"] == label]
-        per_label[label] = (len(hits), len(group))
 
-    predicted_values = sorted({r["pred"] for r in scored})
-    columns = LABELS + [p for p in predicted_values if p not in LABELS]
+def score(items: list[dict], classify) -> dict:
+    rows = [{**item, "pred": classify(item["message"])} for item in items]
+    correct = sum(row["pred"] == row["label"] for row in rows)
     confusion = {
-        true: Counter(r["pred"] for r in scored if r["true"] == true) for true in LABELS
+        true: {pred: sum(r["label"] == true and r["pred"] == pred for r in rows) for pred in LABELS}
+        for true in LABELS
     }
-
+    per_class = {}
+    for label in LABELS:
+        true_positive = confusion[label][label]
+        predicted = sum(confusion[true][label] for true in LABELS)
+        actual = sum(confusion[label].values())
+        per_class[label] = {
+            "precision": true_positive / predicted if predicted else None,
+            "recall": true_positive / actual if actual else None,
+            "support": actual,
+        }
+    low, high = wilson_interval(correct, len(rows))
     return {
-        "rows": rows,
-        "scored": len(scored),
-        "errors": errors,
-        "correct": len(correct),
-        "accuracy": len(correct) / len(scored) if scored else 0.0,
-        "per_label": per_label,
-        "columns": columns,
+        "n": len(rows),
+        "correct": correct,
+        "accuracy": correct / len(rows) if rows else 0.0,
+        "wilson_95": [low, high],
+        "per_class": per_class,
         "confusion": confusion,
-        "misclassified": [r for r in scored if r["pred"] != r["true"]],
+        "predictions": {r["id"]: r["pred"] for r in rows},
+        "misclassified": [r for r in rows if r["pred"] != r["label"]],
     }
 
 
-def _pct(hits: int, total: int) -> str:
-    return f"{hits}/{total} ({hits / total:.1%})" if total else "0/0 (n/a)"
+def _git(*args: str) -> str:
+    return subprocess.run(
+        ["git", *args], cwd=ROOT, capture_output=True, text=True, check=False
+    ).stdout.strip()
 
 
-def render(name: str, stats: dict) -> str:
-    out = [f"#### {name}", ""]
-    out.append(f"- Overall accuracy: **{_pct(stats['correct'], stats['scored'])}**")
-    out.append(f"- Errors (API call raised): **{len(stats['errors'])}**")
-    out.append("")
-    out.append("| True label | Accuracy |")
-    out.append("|---|---|")
-    for label, (hits, total) in stats["per_label"].items():
-        out.append(f"| {label} | {_pct(hits, total)} |")
-    out.append("")
-
-    out.append("Confusion (rows = true, columns = predicted):")
-    out.append("")
-    out.append("| | " + " | ".join(stats["columns"]) + " |")
-    out.append("|---" * (len(stats["columns"]) + 1) + "|")
-    for true in LABELS:
-        counts = stats["confusion"][true]
-        cells = [str(counts.get(col, 0)) for col in stats["columns"]]
-        out.append(f"| **{true}** | " + " | ".join(cells) + " |")
-    out.append("")
-
-    if stats["misclassified"]:
-        out.append("Misclassified:")
-        out.append("")
-        out.append("| Message | True | Predicted |")
-        out.append("|---|---|---|")
-        for r in stats["misclassified"]:
-            out.append(f"| `{r['message']}` | {r['true']} | {r['pred']} |")
-    else:
-        out.append("No misclassifications.")
-    out.append("")
-
-    if stats["errors"]:
-        out.append("Errors:")
-        out.append("")
-        for r in stats["errors"]:
-            out.append(f"- `{r['message']}` — {r['error']}")
-        out.append("")
-    return "\n".join(out)
+def _ratio(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.2f}"
 
 
-def main() -> None:
-    if not os.getenv("OPENAI_API_KEY"):
-        sys.exit("OPENAI_API_KEY is not set. eval/ needs a real key; the test suite does not.")
-
-    in_sync, missing = _prompt_sync_status()
-    print(f"Model: {MODEL}")
-    if not in_sync:
-        print(f"WARNING: the copied prompt has drifted from {CLASSIFIER_SRC.name}: {missing}")
-
-    sections, headline = [], []
-    for title, path in DATASETS:
-        data = json.loads(path.read_text())
-        items = data["messages"]
-        spread = ", ".join(f"{n} {l}" for l, n in Counter(i["label"] for i in items).items())
-        print(f"\n{title}: {len(items)} messages ({spread})")
-
-        print("  LLM (one API call per message)...")
-        llm = summarise(evaluate(classify_llm, items))
-        print("  keyword fallback, before...")
-        before = summarise(evaluate(keyword_fallback_before, items))
-        print("  keyword fallback, after...")
-        after = summarise(evaluate(_keyword_fallback, items))
-
-        sections.append("\n".join([
-            f"## {title} — `eval/{path.name}` ({len(items)} messages, {spread})",
-            "",
-            data["description"],
-            "",
-            render(f"LLM classifier (`{MODEL}`)", llm),
-            render("Keyword fallback — BEFORE (`eval/baseline_keyword.py`)", before),
-            render("Keyword fallback — AFTER (`utils/intent_classifier.py`)", after),
-        ]))
-        headline.append(
-            f"| {title} | {_pct(llm['correct'], llm['scored'])} | "
-            f"{_pct(before['correct'], before['scored'])} | "
-            f"{_pct(after['correct'], after['scored'])} | {len(llm['errors'])} |"
+def print_summary(result: dict, summary_only: bool) -> None:
+    low, high = result["wilson_95"]
+    print(
+        f"{result['set']} / {result['classifier']}: {result['correct']}/{result['n']} "
+        f"= {result['accuracy']:.1%} (Wilson 95% CI {low:.1%}-{high:.1%})"
+    )
+    if summary_only:
+        return
+    for label, stats in result["per_class"].items():
+        print(
+            f"  {label:14} precision {_ratio(stats['precision'])}  "
+            f"recall {_ratio(stats['recall'])}  n={stats['support']}"
         )
+    print("  confusion (rows = true, columns = predicted):")
+    print("  " + " " * 14 + "".join(f"{label:>15}" for label in LABELS))
+    for true in LABELS:
+        cells = "".join(f"{result['confusion'][true][pred]:>15}" for pred in LABELS)
+        print(f"  {true:14}{cells}")
+    for row in result["misclassified"]:
+        print(f"  MISS {row['id']}: {row['message']!r} true={row['label']} pred={row['pred']}")
 
-    body = "\n".join([
-        "# Intent classification results",
-        "",
-        f"- Run: {datetime.now():%Y-%m-%d %H:%M} local time",
-        f"- Model: `{MODEL}` (temperature 0, max_tokens 10)",
-        f"- Prompt copy in sync with `utils/intent_classifier.py`: "
-        f"{'yes' if in_sync else 'NO — ' + str(missing)}",
-        "- **before** = the rules frozen in `eval/baseline_keyword.py`; "
-        "**after** = the rules live in `utils/intent_classifier.py`",
-        "",
-        "| Dataset | LLM | Keyword BEFORE | Keyword AFTER | API errors |",
-        "|---|---|---|---|---|",
-        *headline,
-        "",
-        "**The original set informed the rewrite, so its 'after' number is not",
-        "evidence of anything — the misses there were read and fixed directly.",
-        "The held-out number is the fair one.** It was written and committed",
-        "before the rules were touched.",
-        "",
-        "Both sets are hand-written and small, so these are sanity checks rather",
-        "than benchmarks, and both were written by the same author as the rules.",
-        "",
-        "The LLM path calls the API directly rather than through `classify_intent`,",
-        "which catches every exception and falls back to keywords — that would hide",
-        "an outage behind a keyword-level score.",
-        "",
-        *sections,
-    ])
-    RESULTS.write_text(body + "\n")
-    print(f"\nWritten to {RESULTS.relative_to(ROOT)}")
+
+def main(argv: list[str] | None = None) -> dict:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--set", choices=sorted(SETS), default="heldout")
+    parser.add_argument("--classifier", choices=["current", "v1", "v0"], default="current")
+    parser.add_argument("--summary-only", action="store_true", help="print accuracy and CI only")
+    parser.add_argument("--no-write", action="store_true", help="do not write a results file")
+    args = parser.parse_args(argv)
+
+    path = SETS[args.set]
+    now = datetime.now()
+    result = {
+        "set": args.set,
+        "classifier": args.classifier,
+        "timestamp": now.isoformat(timespec="seconds"),
+        "git_commit": _git("rev-parse", "--short", "HEAD"),
+        "git_dirty": bool(_git("status", "--porcelain")),
+        "dataset_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        **score(load_set(path), get_classifier(args.classifier)),
+    }
+    print_summary(result, args.summary_only)
+
+    if not args.no_write:
+        RESULTS_DIR.mkdir(exist_ok=True)
+        stamp = now.strftime("%Y%m%dT%H%M%S")
+        out = RESULTS_DIR / f"{stamp}_{args.set}_{args.classifier}.json"
+        out.write_text(json.dumps(result, indent=2) + "\n")
+        print(f"Wrote {out.relative_to(ROOT)}")
+    return result
 
 
 if __name__ == "__main__":

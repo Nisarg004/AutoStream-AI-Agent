@@ -6,7 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# The placeholder lets this module import without a key. A call made with it
+# fails authentication, and the callers already handle that failure.
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY") or "missing-api-key")
 
 
 def classify_intent(message: str) -> str:
