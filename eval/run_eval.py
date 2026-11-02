@@ -147,7 +147,7 @@ def main(argv: list[str] | None = None) -> dict:
         "classifier": args.classifier,
         "timestamp": now.isoformat(timespec="seconds"),
         "git_commit": _git("rev-parse", "--short", "HEAD"),
-        "git_dirty": bool(_git("status", "--porcelain")),
+        "git_dirty": bool(_git("status", "--porcelain", "--", ".", ":!eval/results")),
         "dataset_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         **score(load_set(path), get_classifier(args.classifier)),
     }
