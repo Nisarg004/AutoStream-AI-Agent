@@ -18,9 +18,9 @@ def test_route_after_intent(intent, expected):
 
 
 @pytest.mark.parametrize("intent", [None, "nonsense_label"])
-def test_route_after_intent_defaults_to_lead_collection(intent):
-    """An unrecognised label falls through to the lead flow rather than failing."""
-    assert route_after_intent({"intent": intent}) == "lead_collection"
+def test_route_after_intent_sends_unknown_labels_to_rag(intent):
+    """An unrecognised label must never start asking for personal details."""
+    assert route_after_intent({"intent": intent}) == "rag"
 
 
 def test_route_after_lead_collection_fires_the_tool_when_complete():

@@ -21,11 +21,12 @@ def route_after_intent(state: AgentState) -> str:
     if intent == "greeting":
         return END
 
-    if intent == "product_query":
-        return "rag"
+    if intent == "high_intent":
+        return "lead_collection"
 
-    # high_intent or mid-collection
-    return "lead_collection"
+    # product_query, or anything unexpected: answering is harmless, while the
+    # lead flow would ask a stranger for personal details.
+    return "rag"
 
 
 def route_after_lead_collection(state: AgentState) -> str:
