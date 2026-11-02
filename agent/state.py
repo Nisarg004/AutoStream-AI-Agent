@@ -19,6 +19,7 @@ class AgentState(TypedDict):
     lead_name: Optional[str]
     lead_email: Optional[str]
     lead_platform: Optional[str]
+    lead_plan: Optional[str]
     lead_collection_step: Optional[Literal["ask_name", "ask_email", "ask_platform", "complete"]]
 
     # Flow control

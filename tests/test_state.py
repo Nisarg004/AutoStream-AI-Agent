@@ -9,6 +9,7 @@ EXPECTED_FIELDS = {
     "lead_name",
     "lead_email",
     "lead_platform",
+    "lead_plan",
     "lead_collection_step",
     "lead_captured",
 }

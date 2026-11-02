@@ -189,3 +189,24 @@ def _keyword_fallback(message: str) -> str:
     if _GREETING_RE.search(normalised):
         return "greeting"
     return "product_query"
+
+
+def is_product_question(message: str) -> bool:
+    """True if a message sent during lead collection is a question, not an answer.
+
+    A name or platform can contain product words or start like a question ("Will
+    Smith", "Pro Tools"), so one signal is not enough: this needs a question mark
+    or an interrogative opener together with product vocabulary, or both of those.
+    """
+    normalised = _normalise(message)
+    has_mark = "?" in message
+    has_opener = bool(_INTERROGATIVE_RE.match(normalised))
+    if has_mark and has_opener:
+        return True
+    return (has_mark or has_opener) and bool(_PRODUCT_RE.search(normalised))
+
+
+def extract_plan(message: str) -> str | None:
+    """The single plan a message names, or None if it names none or both."""
+    plans = {match.capitalize() for match in _PLAN_RE.findall(_normalise(message))}
+    return plans.pop() if len(plans) == 1 else None

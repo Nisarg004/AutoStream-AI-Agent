@@ -194,3 +194,21 @@ def test_tool_execution_guard_survives_a_none_field(missing, captured):
     assert captured == [], "the tool must not fire with a missing field"
     assert update["lead_captured"] is False
     assert update["lead_collection_step"] is None
+
+
+@pytest.mark.parametrize("email", ["alice@example..com", "alice@.example.com", "a b@example.com"])
+def test_malformed_domains_and_spaces_are_rejected(email):
+    assert "lead_email" not in nodes.lead_collection_node(_at_step("ask_email", email))
+
+
+def test_tool_refuses_an_invalid_email_even_if_state_holds_one(captured):
+    state = _new_state() | {
+        "lead_name": "Alice",
+        "lead_email": "not-an-email",
+        "lead_platform": "YouTube",
+    }
+
+    update = nodes.tool_execution_node(state)
+
+    assert captured == []
+    assert update["lead_captured"] is False

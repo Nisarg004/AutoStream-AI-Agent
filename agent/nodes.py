@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from agent.state import AgentState
 from rag.retriever import retrieve
-from utils.intent_classifier import classify_intent
+from utils.intent_classifier import classify_intent, extract_plan, is_product_question
 from tools.lead_capture import mock_lead_capture
 
 load_dotenv()
@@ -18,7 +18,34 @@ _MODEL = "gpt-4o-mini"
 
 # Deliberately permissive: rejects obvious typos (missing @, missing TLD,
 # embedded spaces) without turning away unusual but valid addresses.
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$")
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)*\.[A-Za-z]{2,}$")
+
+# The whole message must be an escape, so "what if I cancel my plan?" stays a
+# product question.
+_CANCEL_RE = re.compile(
+    r"^(?:(?:ok|okay|no|actually|sorry|please|oh)[,\s]+)*"
+    r"(?:cancel|never\s?mind|nvm|forget it|stop|not now|no thanks)"
+    r"(?:\s+(?:it|that|this))?(?:[,\s]+(?:please|thanks))?[.!\s]*$",
+    re.IGNORECASE,
+)
+
+_NAME_QUESTION = "Could you please share your full name?"
+_EMAIL_QUESTION = "What's your email address?"
+_PLATFORM_QUESTION = (
+    "Which creator platform do you use? (e.g. YouTube, Instagram, TikTok, etc.)"
+)
+_PENDING_QUESTION = {
+    "ask_name": _NAME_QUESTION,
+    "ask_email": _EMAIL_QUESTION,
+    "ask_platform": _PLATFORM_QUESTION,
+}
+_CLEARED_LEAD = {
+    "lead_collection_step": None,
+    "lead_name": None,
+    "lead_email": None,
+    "lead_platform": None,
+    "lead_plan": None,
+}
 
 # Used when the API is unreachable. classify_intent already degrades to keyword
 # matching, but that only helps if the node it routes to can still answer --
@@ -51,18 +78,29 @@ def _exchange(user_message: str, reply: str) -> list[dict]:
 def intent_node(state: AgentState) -> dict:
     """
     Classifies user intent.
-    If we are mid lead-collection, skip reclassification and keep high_intent.
+    Mid lead-collection, a product question goes to RAG with the collected fields
+    untouched, and anything else is treated as the answer to the pending question.
     For greetings, sets the response here so the graph can terminate early.
     """
-    # If already collecting lead, don't reclassify – preserve flow
-    active_steps = ("ask_name", "ask_email", "ask_platform")
-    if state.get("lead_collection_step") in active_steps:
-        print(f"[IntentNode] Mid lead-collection, keeping high_intent")
-        return {"intent": "high_intent"}
+    message = state["user_message"]
+    plan = extract_plan(message)
 
-    intent = classify_intent(state["user_message"])
+    if state.get("lead_collection_step") in _PENDING_QUESTION:
+        if _CANCEL_RE.match(message.strip()) or not is_product_question(message):
+            print(f"[IntentNode] Mid lead-collection, keeping high_intent")
+            return {"intent": "high_intent"}
+        print("[IntentNode] Product question mid lead-collection")
+        update: dict = {"intent": "product_query"}
+        # Asking about another plan does not change the one being signed up for.
+        if plan and not state.get("lead_plan"):
+            update["lead_plan"] = plan
+        return update
 
-    update: dict = {"intent": intent}
+    intent = classify_intent(message)
+
+    update = {"intent": intent}
+    if plan:
+        update["lead_plan"] = plan
 
     if intent == "greeting":
         try:
@@ -132,7 +170,12 @@ def rag_node(state: AgentState) -> dict:
         answer = _ANSWER_UNAVAILABLE
         if context.strip():
             answer = f"{_ANSWER_UNAVAILABLE}\n\nHere's what I have on file:\n{context}"
-    return {"response": answer, "chat_history": _exchange(state["user_message"], answer)}
+    # Only the answer goes in history; the reminder is not part of the exchange.
+    update = {"response": answer, "chat_history": _exchange(state["user_message"], answer)}
+    pending = _PENDING_QUESTION.get(state.get("lead_collection_step"))
+    if pending:
+        update["response"] = f"{answer}\n\nWhen you're ready: {pending}"
+    return update
 
 
 # ---------------------------------------------------------------------------
@@ -151,13 +194,19 @@ def lead_collection_node(state: AgentState) -> dict:
     user_msg = state["user_message"].strip()
     update: dict = {}
 
+    if step in _PENDING_QUESTION and _CANCEL_RE.match(user_msg):
+        print("[LeadCollectionNode] User cancelled — clearing the lead")
+        return {
+            **_CLEARED_LEAD,
+            "response": "No problem, I've cancelled that and discarded your details. "
+            "Is there anything else I can help with?",
+        }
+
     if step is None:
         # First entry: user just expressed high intent
         update["lead_collection_step"] = "ask_name"
-        update["response"] = (
-            "Great choice! I'd love to get you set up. "
-            "Could you please share your full name?"
-        )
+        update["lead_captured"] = False
+        update["response"] = f"Great choice! I'd love to get you set up. {_NAME_QUESTION}"
         print("[LeadCollectionNode] Starting lead flow — asking for name")
 
     elif step == "ask_name":
@@ -168,7 +217,7 @@ def lead_collection_node(state: AgentState) -> dict:
             }
         update["lead_name"] = user_msg
         update["lead_collection_step"] = "ask_email"
-        update["response"] = f"Thanks, {user_msg}! What's your email address?"
+        update["response"] = f"Thanks, {user_msg}! {_EMAIL_QUESTION}"
         print(f"[LeadCollectionNode] Name collected: {user_msg}")
 
     elif step == "ask_email":
@@ -182,21 +231,13 @@ def lead_collection_node(state: AgentState) -> dict:
             }
         update["lead_email"] = user_msg
         update["lead_collection_step"] = "ask_platform"
-        update["response"] = (
-            "Perfect! Last question — which creator platform do you use? "
-            "(e.g. YouTube, Instagram, TikTok, etc.)"
-        )
+        update["response"] = f"Perfect! Last question. {_PLATFORM_QUESTION}"
         print(f"[LeadCollectionNode] Email collected: {user_msg}")
 
     elif step == "ask_platform":
         if not user_msg:
             print("[LeadCollectionNode] Empty platform — re-asking")
-            return {
-                "response": (
-                    "I didn't catch that — which creator platform do you use? "
-                    "(e.g. YouTube, Instagram, TikTok, etc.)"
-                )
-            }
+            return {"response": f"I didn't catch that. {_PLATFORM_QUESTION}"}
         update["lead_platform"] = user_msg
         update["lead_collection_step"] = "complete"
         print(f"[LeadCollectionNode] Platform collected: {user_msg}")
@@ -209,20 +250,21 @@ def lead_collection_node(state: AgentState) -> dict:
 # ---------------------------------------------------------------------------
 
 def tool_execution_node(state: AgentState) -> dict:
-    """Validates all lead fields then calls mock_lead_capture."""
+    """Validates all lead fields then calls mock_lead_capture.
+
+    No LLM decides whether this runs. Routing and validation are deterministic,
+    so the tool cannot fire on a hallucinated argument and still works in an outage.
+    """
     # `or ""` guards against a field that is present but None, which .get's
     # default does not cover.
     name = (state.get("lead_name") or "").strip()
     email = (state.get("lead_email") or "").strip()
     platform = (state.get("lead_platform") or "").strip()
 
-    if not all([name, email, platform]):
+    if not all([name, platform]) or not _EMAIL_RE.match(email):
         return {
+            **_CLEARED_LEAD,
             "response": "Something went wrong — I'm missing some details. Let's start over.",
-            "lead_collection_step": None,
-            "lead_name": None,
-            "lead_email": None,
-            "lead_platform": None,
             "lead_captured": False,
         }
 
@@ -231,14 +273,13 @@ def tool_execution_node(state: AgentState) -> dict:
 
     # Reset the flow so a later high-intent message starts fresh instead of
     # re-routing here (step == "complete") and capturing the same lead again.
+    plan = state.get("lead_plan")
+    interest = f"the {plan} plan" if plan else "AutoStream"
     return {
+        **_CLEARED_LEAD,
         "response": (
-            f"You're all set, {name}! Your interest in the Pro plan has been recorded. "
+            f"You're all set, {name}! Your interest in {interest} has been recorded. "
             "Our team will reach out to you shortly. Welcome to AutoStream!"
         ),
         "lead_captured": True,
-        "lead_collection_step": None,
-        "lead_name": None,
-        "lead_email": None,
-        "lead_platform": None,
     }
