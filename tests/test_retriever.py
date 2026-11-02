@@ -3,6 +3,8 @@
 The retrieve() tests run the real all-MiniLM-L6-v2 model, which is cached
 locally after the first run. The _load_knowledge() tests are pure.
 """
+import pytest
+
 from rag.retriever import _load_knowledge, retrieve
 
 
@@ -30,3 +32,30 @@ def test_retrieve_ranks_the_pro_plan_first_for_a_pricing_query():
 
 def test_retrieve_honours_top_k():
     assert len(retrieve("refund policy", top_k=2).splitlines()) == 2
+
+
+@pytest.mark.parametrize(
+    "query,expected_start",
+    [
+        ("What does the Basic plan cost?", "Basic Plan"),
+        ("Can I get a refund after a week?", "Refund Policy"),
+        ("What is your refund policy?", "Refund Policy"),
+        ("Who gets 24/7 support?", "Support"),
+    ],
+)
+def test_retrieve_ranks_the_right_chunk_first(query, expected_start):
+    assert retrieve(query).splitlines()[0].startswith(expected_start)
+
+
+def test_default_top_k_returns_three_of_the_four_chunks():
+    """Pins the limitation stated in the README: retrieval barely filters."""
+    assert len(retrieve("anything").splitlines()) == 3
+
+
+@pytest.mark.xfail(strict=True, reason="Known weakness: Basic outranks Pro for this feature query")
+def test_feature_query_ranks_the_pro_plan_first():
+    assert retrieve("Which plan gives me 4K and unlimited videos?").startswith("Pro Plan")
+
+
+def test_feature_query_still_gets_the_pro_plan_into_the_context():
+    assert "Pro Plan" in retrieve("Which plan gives me 4K and unlimited videos?")

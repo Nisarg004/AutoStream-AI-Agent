@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # An empty key proves that nothing here needs OpenAI.
+      OPENAI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # Retriever tests use the real embedding model, downloaded on the first run.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-all-MiniLM-L6-v2
+
+      - run: python -m pytest -q
+
+      - name: Offline eval
+        run: |
+          python eval/run_eval.py --set dev --no-write
+          python eval/run_eval.py --set heldout --no-write
+          python eval/compare.py --before v1
+          python eval/compare.py --before v0
