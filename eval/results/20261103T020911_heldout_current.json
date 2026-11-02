@@ -1,0 +1,107 @@
+{
+  "set": "heldout",
+  "classifier": "current",
+  "timestamp": "2026-11-03T02:09:11",
+  "git_commit": "5c3a2b9",
+  "git_dirty": false,
+  "dataset_sha256": "6a7e0ddbcd99833a643833f373757923a8a442e21f42d194bc4f3fd1d2c95fce",
+  "n": 30,
+  "correct": 26,
+  "accuracy": 0.8666666666666667,
+  "wilson_95": [
+    0.7031867316460598,
+    0.9469034455288754
+  ],
+  "per_class": {
+    "greeting": {
+      "precision": 1.0,
+      "recall": 0.8,
+      "support": 10
+    },
+    "product_query": {
+      "precision": 0.7142857142857143,
+      "recall": 1.0,
+      "support": 10
+    },
+    "high_intent": {
+      "precision": 1.0,
+      "recall": 0.8,
+      "support": 10
+    }
+  },
+  "confusion": {
+    "greeting": {
+      "greeting": 8,
+      "product_query": 2,
+      "high_intent": 0
+    },
+    "product_query": {
+      "greeting": 0,
+      "product_query": 10,
+      "high_intent": 0
+    },
+    "high_intent": {
+      "greeting": 0,
+      "product_query": 2,
+      "high_intent": 8
+    }
+  },
+  "predictions": {
+    "h01": "greeting",
+    "h02": "greeting",
+    "h03": "greeting",
+    "h04": "greeting",
+    "h05": "greeting",
+    "h06": "greeting",
+    "h07": "product_query",
+    "h08": "greeting",
+    "h09": "greeting",
+    "h10": "product_query",
+    "h11": "product_query",
+    "h12": "product_query",
+    "h13": "product_query",
+    "h14": "product_query",
+    "h15": "product_query",
+    "h16": "product_query",
+    "h17": "product_query",
+    "h18": "product_query",
+    "h19": "product_query",
+    "h20": "product_query",
+    "h21": "high_intent",
+    "h22": "product_query",
+    "h23": "high_intent",
+    "h24": "high_intent",
+    "h25": "high_intent",
+    "h26": "high_intent",
+    "h27": "high_intent",
+    "h28": "high_intent",
+    "h29": "high_intent",
+    "h30": "product_query"
+  },
+  "misclassified": [
+    {
+      "id": "h07",
+      "message": "who am I talking to?",
+      "label": "greeting",
+      "pred": "product_query"
+    },
+    {
+      "id": "h10",
+      "message": "helo",
+      "label": "greeting",
+      "pred": "product_query"
+    },
+    {
+      "id": "h22",
+      "message": "I'll go with Pro",
+      "label": "high_intent",
+      "pred": "product_query"
+    },
+    {
+      "id": "h30",
+      "message": "Where do I enter my card?",
+      "label": "high_intent",
+      "pred": "product_query"
+    }
+  ]
+}
