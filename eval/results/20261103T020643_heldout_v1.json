@@ -1,0 +1,125 @@
+{
+  "set": "heldout",
+  "classifier": "v1",
+  "timestamp": "2026-11-03T02:06:43",
+  "git_commit": "1334161",
+  "git_dirty": true,
+  "dataset_sha256": "6a7e0ddbcd99833a643833f373757923a8a442e21f42d194bc4f3fd1d2c95fce",
+  "n": 30,
+  "correct": 23,
+  "accuracy": 0.7666666666666667,
+  "wilson_95": [
+    0.5907167369328042,
+    0.8820761191944214
+  ],
+  "per_class": {
+    "greeting": {
+      "precision": 1.0,
+      "recall": 0.8,
+      "support": 10
+    },
+    "product_query": {
+      "precision": 0.6,
+      "recall": 0.9,
+      "support": 10
+    },
+    "high_intent": {
+      "precision": 0.8571428571428571,
+      "recall": 0.6,
+      "support": 10
+    }
+  },
+  "confusion": {
+    "greeting": {
+      "greeting": 8,
+      "product_query": 2,
+      "high_intent": 0
+    },
+    "product_query": {
+      "greeting": 0,
+      "product_query": 9,
+      "high_intent": 1
+    },
+    "high_intent": {
+      "greeting": 0,
+      "product_query": 4,
+      "high_intent": 6
+    }
+  },
+  "predictions": {
+    "h01": "greeting",
+    "h02": "greeting",
+    "h03": "greeting",
+    "h04": "greeting",
+    "h05": "greeting",
+    "h06": "greeting",
+    "h07": "product_query",
+    "h08": "greeting",
+    "h09": "greeting",
+    "h10": "product_query",
+    "h11": "product_query",
+    "h12": "product_query",
+    "h13": "product_query",
+    "h14": "product_query",
+    "h15": "product_query",
+    "h16": "product_query",
+    "h17": "product_query",
+    "h18": "product_query",
+    "h19": "product_query",
+    "h20": "high_intent",
+    "h21": "high_intent",
+    "h22": "product_query",
+    "h23": "high_intent",
+    "h24": "high_intent",
+    "h25": "high_intent",
+    "h26": "high_intent",
+    "h27": "product_query",
+    "h28": "product_query",
+    "h29": "high_intent",
+    "h30": "product_query"
+  },
+  "misclassified": [
+    {
+      "id": "h07",
+      "message": "who am I talking to?",
+      "label": "greeting",
+      "pred": "product_query"
+    },
+    {
+      "id": "h10",
+      "message": "helo",
+      "label": "greeting",
+      "pred": "product_query"
+    },
+    {
+      "id": "h20",
+      "message": "Before I buy anything, what's your refund window?",
+      "label": "product_query",
+      "pred": "high_intent"
+    },
+    {
+      "id": "h22",
+      "message": "I'll go with Pro",
+      "label": "high_intent",
+      "pred": "product_query"
+    },
+    {
+      "id": "h27",
+      "message": "We've compared the options. We want the Pro plan.",
+      "label": "high_intent",
+      "pred": "product_query"
+    },
+    {
+      "id": "h28",
+      "message": "sing me up",
+      "label": "high_intent",
+      "pred": "product_query"
+    },
+    {
+      "id": "h30",
+      "message": "Where do I enter my card?",
+      "label": "high_intent",
+      "pred": "product_query"
+    }
+  ]
+}

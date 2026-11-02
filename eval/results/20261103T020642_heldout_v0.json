@@ -1,0 +1,161 @@
+{
+  "set": "heldout",
+  "classifier": "v0",
+  "timestamp": "2026-11-03T02:06:42",
+  "git_commit": "1334161",
+  "git_dirty": false,
+  "dataset_sha256": "6a7e0ddbcd99833a643833f373757923a8a442e21f42d194bc4f3fd1d2c95fce",
+  "n": 30,
+  "correct": 17,
+  "accuracy": 0.5666666666666667,
+  "wilson_95": [
+    0.39197306873128,
+    0.7262251453005263
+  ],
+  "per_class": {
+    "greeting": {
+      "precision": 0.5882352941176471,
+      "recall": 1.0,
+      "support": 10
+    },
+    "product_query": {
+      "precision": 1.0,
+      "recall": 0.2,
+      "support": 10
+    },
+    "high_intent": {
+      "precision": 0.45454545454545453,
+      "recall": 0.5,
+      "support": 10
+    }
+  },
+  "confusion": {
+    "greeting": {
+      "greeting": 10,
+      "product_query": 0,
+      "high_intent": 0
+    },
+    "product_query": {
+      "greeting": 2,
+      "product_query": 2,
+      "high_intent": 6
+    },
+    "high_intent": {
+      "greeting": 5,
+      "product_query": 0,
+      "high_intent": 5
+    }
+  },
+  "predictions": {
+    "h01": "greeting",
+    "h02": "greeting",
+    "h03": "greeting",
+    "h04": "greeting",
+    "h05": "greeting",
+    "h06": "greeting",
+    "h07": "greeting",
+    "h08": "greeting",
+    "h09": "greeting",
+    "h10": "greeting",
+    "h11": "high_intent",
+    "h12": "high_intent",
+    "h13": "greeting",
+    "h14": "high_intent",
+    "h15": "high_intent",
+    "h16": "high_intent",
+    "h17": "product_query",
+    "h18": "product_query",
+    "h19": "greeting",
+    "h20": "high_intent",
+    "h21": "greeting",
+    "h22": "greeting",
+    "h23": "high_intent",
+    "h24": "high_intent",
+    "h25": "high_intent",
+    "h26": "high_intent",
+    "h27": "high_intent",
+    "h28": "greeting",
+    "h29": "greeting",
+    "h30": "greeting"
+  },
+  "misclassified": [
+    {
+      "id": "h11",
+      "message": "What's the price of the Basic plan?",
+      "label": "product_query",
+      "pred": "high_intent"
+    },
+    {
+      "id": "h12",
+      "message": "I want to know whether Pro includes captions",
+      "label": "product_query",
+      "pred": "high_intent"
+    },
+    {
+      "id": "h13",
+      "message": "Is there any way to get my money returned after two weeks?",
+      "label": "product_query",
+      "pred": "greeting"
+    },
+    {
+      "id": "h14",
+      "message": "how much for teh pro plan",
+      "label": "product_query",
+      "pred": "high_intent"
+    },
+    {
+      "id": "h15",
+      "message": "I run a channel from another country, does 4K work there?",
+      "label": "product_query",
+      "pred": "high_intent"
+    },
+    {
+      "id": "h16",
+      "message": "If I restart my subscription later, do I keep the same price?",
+      "label": "product_query",
+      "pred": "high_intent"
+    },
+    {
+      "id": "h19",
+      "message": "do you do subtitles",
+      "label": "product_query",
+      "pred": "greeting"
+    },
+    {
+      "id": "h20",
+      "message": "Before I buy anything, what's your refund window?",
+      "label": "product_query",
+      "pred": "high_intent"
+    },
+    {
+      "id": "h21",
+      "message": "sounds great, sign me up please",
+      "label": "high_intent",
+      "pred": "greeting"
+    },
+    {
+      "id": "h22",
+      "message": "I'll go with Pro",
+      "label": "high_intent",
+      "pred": "greeting"
+    },
+    {
+      "id": "h28",
+      "message": "sing me up",
+      "label": "high_intent",
+      "pred": "greeting"
+    },
+    {
+      "id": "h29",
+      "message": "yes please, let's go ahead with it",
+      "label": "high_intent",
+      "pred": "greeting"
+    },
+    {
+      "id": "h30",
+      "message": "Where do I enter my card?",
+      "label": "high_intent",
+      "pred": "greeting"
+    }
+  ]
+}
